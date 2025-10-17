@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Calculateur de Gross Debit</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        
+        .container {
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            padding: 40px;
+            max-width: 500px;
+            width: 100%;
+        }
+        
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 28px;
+            text-align: center;
+        }
+        
+        .subtitle {
+            color: #666;
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 14px;
+        }
+        
+        .upload-area {
+            border: 2px dashed #667eea;
+            border-radius: 12px;
+            padding: 40px 20px;
+            text-align: center;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            background: #f8f9ff;
+        }
+        
+        .upload-area:hover {
+            border-color: #764ba2;
+            background: #f0f2ff;
+        }
+        
+        .upload-area.dragover {
+            border-color: #764ba2;
+            background: #e8ebff;
+            transform: scale(1.02);
+        }
+        
+        .upload-icon {
+            font-size: 48px;
+            margin-bottom: 15px;
+        }
+        
+        input[type="file"] {
+            display: none;
+        }
+        
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: inline-block;
+            margin-top: 10px;
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+        }
+        
+        .btn:active {
+            transform: translateY(0);
+        }
+        
+        .result {
+            margin-top: 30px;
+            padding: 25px;
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            border-radius: 12px;
+            display: none;
+            animation: slideIn 0.4s ease;
+        }
+        
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .result.show {
+            display: block;
+        }
+        
+        .result-label {
+            color: #555;
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .result-value {
+            color: #333;
+            font-size: 32px;
+            font-weight: bold;
+        }
+        
+        .file-info {
+            margin-top: 15px;
+            padding: 15px;
+            background: #e8f4f8;
+            border-radius: 8px;
+            font-size: 14px;
+            color: #555;
+            display: none;
+        }
+        
+        .file-info.show {
+            display: block;
+        }
+        
+        .error {
+            color: #e74c3c;
+            margin-top: 15px;
+            padding: 15px;
+            background: #ffe8e8;
+            border-radius: 8px;
+            display: none;
+            font-size: 14px;
+        }
+        
+        .error.show {
+            display: block;
+        }
+        
+        .processing {
+            color: #667eea;
+            margin-top: 15px;
+            font-style: italic;
+            display: none;
+        }
+        
+        .processing.show {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📊 Calculateur de Gross Debit</h1>
+        <p class="subtitle">Traitement 100% local - Vos données restent confidentielles</p>
+        
+        <div class="upload-area" id="uploadArea">
+            <div class="upload-icon">📁</div>
+            <p style="color: #667eea; font-weight: 600; margin-bottom: 10px;">
+                Cliquez ou glissez votre fichier CSV ici
+            </p>
+            <p style="color: #999; font-size: 13px;">
+                Fichier CSV avec délimiteur point-virgule (;)
+            </p>
+            <input type="file" id="fileInput" accept=".csv">
+            <button class="btn" onclick="document.getElementById('fileInput').click()">
+                Choisir un fichier
+            </button>
+        </div>
+        
+        <div class="file-info" id="fileInfo"></div>
+        <div class="processing" id="processing">⏳ Traitement en cours...</div>
+        <div class="error" id="error"></div>
+        
+        <div class="result" id="result">
+            <div class="result-label">Total Gross Debit (GC)</div>
+            <div class="result-value" id="totalValue">0.00</div>
+        </div>
+    </div>
+
+    <script>
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInput = document.getElementById('fileInput');
+        const fileInfo = document.getElementById('fileInfo');
+        const processing = document.getElementById('processing');
+        const errorDiv = document.getElementById('error');
+        const resultDiv = document.getElementById('result');
+        const totalValue = document.getElementById('totalValue');
+
+        // Gestion du drag and drop
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('dragover');
+        });
+
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.classList.remove('dragover');
+        });
+
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                handleFile(files[0]);
+            }
+        });
+
+        // Gestion du clic sur le bouton
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                handleFile(e.target.files[0]);
+            }
+        });
+
+        function handleFile(file) {
+            // Réinitialiser l'affichage
+            errorDiv.classList.remove('show');
+            resultDiv.classList.remove('show');
+            fileInfo.classList.remove('show');
+            processing.classList.add('show');
+
+            // Vérifier que c'est un fichier CSV
+            if (!file.name.toLowerCase().endsWith('.csv')) {
+                showError('Veuillez sélectionner un fichier CSV');
+                processing.classList.remove('show');
+                return;
+            }
+
+            // Afficher les infos du fichier
+            fileInfo.innerHTML = `<strong>Fichier :</strong> ${file.name} (${(file.size / 1024).toFixed(2)} KB)`;
+            fileInfo.classList.add('show');
+
+            // Lire le fichier
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const content = e.target.result;
+                    const total = computeTotalGrossDebit(content);
+                    displayResult(total);
+                } catch (error) {
+                    showError('Erreur lors du traitement du fichier : ' + error.message);
+                } finally {
+                    processing.classList.remove('show');
+                }
+            };
+            reader.onerror = function() {
+                showError('Erreur lors de la lecture du fichier');
+                processing.classList.remove('show');
+            };
+            reader.readAsText(file, 'UTF-8');
+        }
+
+        function computeTotalGrossDebit(csvContent) {
+            const lines = csvContent.split('\n');
+            
+            if (lines.length === 0) {
+                throw new Error('Le fichier est vide');
+            }
+
+            // Trouver l'en-tête
+            const header = lines[0].split(';').map(h => h.trim());
+            const grossDebitIndex = header.indexOf('Gross Debit (GC)');
+
+            if (grossDebitIndex === -1) {
+                throw new Error('Colonne "Gross Debit (GC)" non trouvée dans le fichier');
+            }
+
+            let sum = 0.0;
+            let errorCount = 0;
+
+            // Traiter chaque ligne (en sautant l'en-tête)
+            for (let i = 1; i < lines.length; i++) {
+                const line = lines[i].trim();
+                if (!line) continue; // Ignorer les lignes vides
+
+                const columns = line.split(';');
+                if (columns.length > grossDebitIndex) {
+                    try {
+                        let grossDebit = columns[grossDebitIndex].trim();
+                        
+                        // Si la valeur est vide, utiliser 0
+                        if (!grossDebit) {
+                            grossDebit = '0';
+                        }
+                        
+                        // Remplacer les virgules par des points
+                        grossDebit = grossDebit.replace(',', '.');
+                        
+                        const value = parseFloat(grossDebit);
+                        if (!isNaN(value)) {
+                            sum += value;
+                        } else {
+                            errorCount++;
+                            console.warn(`Ligne ${i + 1}: valeur invalide "${grossDebit}"`);
+                        }
+                    } catch (error) {
+                        errorCount++;
+                        console.warn(`Ligne ${i + 1}: erreur de conversion`, error);
+                    }
+                }
+            }
+
+            if (errorCount > 0) {
+                console.log(`${errorCount} ligne(s) avec des erreurs ont été ignorées`);
+            }
+
+            return sum;
+        }
+
+        function displayResult(total) {
+            totalValue.textContent = total.toFixed(2);
+            resultDiv.classList.add('show');
+        }
+
+        function showError(message) {
+            errorDiv.textContent = '❌ ' + message;
+            errorDiv.classList.add('show');
+        }
+    </script>
+</body>
+</html>
